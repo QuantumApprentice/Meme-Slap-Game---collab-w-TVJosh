@@ -5,7 +5,7 @@
 #### --Keyboard interface
 
 ## TVJosh
-#### -- not sure yet
+#### --State Machine
 
 ## What do we need?
 1. Slap art
