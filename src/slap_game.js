@@ -1,56 +1,67 @@
 document.addEventListener("keydown", keyboard_callback);
 const canvas = document.getElementById("canvas");
 const ctx    = canvas.getContext("2d");
+const levelSelect = document.getElementById("level");
 
 /*          tvJosh          */
-let p1ScoreDiv;
-let p2ScoreDiv;
 document.addEventListener("load",()=>{
-    // p1Div = document.getElementById('p1_msg');
-    // p2Div = document.getElementById('p2_msg');
-    // p1StateDiv = document.getElementById('p1_state');
-    // p2StateDiv = document.getElementById('p2_state');
-    p1ScoreDiv = document.getElementById('p1_score');
-    p2ScoreDiv = document.getElementById('p2_score');
+    p1.ScoreDiv = document.getElementById('p1_score');
+    p2.ScoreDiv = document.getElementById('p2_score');
 }, 1000);
+const TRY_SLAP_STATE = 0;
+const SLAPPING_STATE = 1;
+const DODGE_STATE    = 2;
+const IDLE_STATE     = 3;
+
 /*          end         */
 
 
-
-let p1 = {
-    "State" : "Base",   //UnReady?
-    "Anim"  : 0,
-    "Timer" : 0
-};
-let p2 = {
-    "State" : "Base",   //UnReady?
-    "Anim"  : 0,
-    "Timer" : 0
-};
 
 const slapCooldown  = 1000;
 const dodgeCooldown = 1000;
 
 const WillSmith = {
-    "sprite" : "../resources/Will_Smith_slap_spritesheet.png",
-    "width"  : 410,
-    "p1_Offset" : 0,
-    "p2_Offset" : 410/2.5,
-    "p1_Width"  : 410 - (410/2.5),
-    "p2_Width"  : 410 - (410/2.5),
+    "sprite"      : "../resources/Will_Smith_slap_spritesheet.png",
+    "sprite_w"    : 410,
+    "p1_X"        : 410/2.5,
+    "p2_X"        : 0,
+    "p1_W"        : 410/2.5,
+    "p2_W"        : 410 - (410/2.5),
 
-    "p1_Slap"  : 410*3,
-    "p2_Slap"  : 410/2.5,
+    "p1_SlapX"    : (410*3) + (410/2.5),
+    "p2_SlapX"    : 410*3,
 
-    "p1_Dodge" : 410/2.5,
-    "p2_Dodge" : 410/2.5,
-    "p1_DodgeVec"   : +30,
-    "p2_DodgeVec"   : -30
+    "p1_DodgeX"   : 0,
+    "p2_DodgeX"   : 410/2.5,
+    "p1_DodgeVec" : +30,
+    "p2_DodgeVec" : -30
 };
 const characters = [
     WillSmith,
 ];
 
+
+levelSelect.innerHTML = '<option value="0">Will Smith</option>';
+levelSelect.innerHTML += '<option value="1">Robin Hood</option>';
+
+let p1ScoreDiv;
+let p2ScoreDiv;
+let p1 = {
+    "Player"     : 1,
+    "State"      : IDLE_STATE,   //UnReady?
+    "Anim_Frame" : 0,
+    "Next_Frame" : 0,
+    "ScoreDiv"   : p1ScoreDiv,
+    "SlapCount"  : 0
+};
+let p2 = {
+    "Player"     : 2,
+    "State"      : IDLE_STATE,   //UnReady?
+    "Anim_Frame" : 0,
+    "Next_Frame" : 0,
+    "ScoreDiv"   : p2ScoreDiv,
+    "SlapCount"  : 0
+};
 
 
 
@@ -63,50 +74,50 @@ slap_image.src = characters[0].sprite;
 ctx.drawImage(
     slap_image,
     0,0,
-    characters[0].width, slap_image.height,
+    characters[0].sprite_w, slap_image.height,
     0,0,
-    characters[0].width, slap_image.height,
+    characters[0].sprite_w, slap_image.height,
 );
 
-function slap(player,level,idx) {
-    console.log("animating slap");
-    let offset = idx*characters[level].width;
+// player = which player is doing the slapping
+// idx    = which sprite animation frame to display
+function drawSlap(player,idx) {
+    const offset = idx*player.spriteW;
     if (offset > slap_image.width) {
+        animateReady(player);
         return;
     }
     ctx.clearRect(
-        characters[level].p1_Offset,0,
-        characters[level].p1_Width,canvas.height
+        player.x,0,
+        player.w,canvas.height
     );
     ctx.drawImage(
-        slap_image,                                 //image
-        characters[level].p1_Slap+offset,0,               //sx,sy
-        characters[level].width, slap_image.height,    //sw,sh
+        slap_image,                 //image
+        player.slapX + offset,0,    //sx,sy
+        player.w,slap_image.height, //sw,sh
 
-        characters[level].p1_Offset,0,                 //dx,dy
-        characters[level].p1_Width, slap_image.height  //dw,dh
+        player.x,0,                 //dx,dy
+        player.w,slap_image.height  //dw,dh
     );
-    setTimeout(()=>{slap(player,level,idx+1)},200);
 }
 
-function animate_slap(player, level) {
-    slap_image.src = characters[level].sprite;
-    // console.log("animating slap");
+function animate_slap(player, time) {
+    // console.log("animating slap, frame: ", p1.Anim_Frame);
 
-    if (player == "p1") {
-        p1.State = "Slap";
-        slap("p1",0,0);
-    } else {     //p2
-        p2.State = "Slap";
-        slap("p2",0,0);
+    slap_image.src = player.sprite;
+
+    if (time > player.Next_Frame) {
+        player.Anim_Frame++;
+        player.Next_Frame = time + 200;
     }
-
-    setTimeout(()=>{animate_base(level)}, slapCooldown);
-    console.log(`Slap Cooldown: ${slapCooldown/1000}s`);
+    drawSlap(player,player.Anim_Frame);
 }
-function animate_ready(level) {
-    state = "Ready";
-    slap_image.src = characters[level].sprite;
+
+function animateReady(player) {
+    slap_image.src = player.sprite;
+    player.State = IDLE_STATE;
+    player.Anim_Frame = 0;
+
     ctx.clearRect(
         0,0,
         canvas.width,
@@ -114,117 +125,38 @@ function animate_ready(level) {
     );
     ctx.drawImage(
         slap_image,
-        characters[level].width,0,
-        characters[level].width, slap_image.height,
-        0,0,
-        characters[level].width, slap_image.height,
+        player.x,0,
+        player.w, slap_image.height,
+        player.x,0,
+        player.w, slap_image.height
     );
 }
-function animate_base(level) {
-    // console.log("level: ", level);
-    // console.log("Width: ", characters[level].width);
-    slap_image.src = characters[level].sprite;
-    state = "Base";
+
+function animateDodge(player) {
+    console.log("dodging?");
+    slap_image.src = player.sprite;
+    player.State = DODGE_STATE;
     ctx.clearRect(
         0,0,
         canvas.width,
         canvas.height
-    )
+    );
     ctx.drawImage(
         slap_image,
         0,0,
-        characters[level].width, slap_image.height,
-        0,0,
-        characters[level].width, slap_image.height
+        player.dodgeX, slap_image.height,
+        player.dodgeV,0,
+        player.dodgeX,
+        slap_image.height/2
     );
-}
-function animate_dodge(player, level) {
-    state = "Dodge";
-    slap_image.src = characters[level].sprite;
-    ctx.clearRect(
-        0,0,
-        canvas.width,
-        canvas.height
-    )
-
-    if (player == "p1") {
-        ctx.drawImage(
-            slap_image,
-            0,0,
-            characters[level].player1Dodge, slap_image.height,
-            characters[level].p1_DodgeVec,0,
-            characters[level].p1_Dodge,
-            slap_image.height/2
-        );
-    } else {    //p2
-        ctx.drawImage(
-            slap_image,
-            0,0,
-            characters[level].player2Dodge, slap_image.height,
-            characters[level].p2_DodgeVec,0,
-            characters[level].p2_Dodge,
-            slap_image.height/2
-        );
-    }
-
-    // setTimeout(()=>{animate_base(level)}, dodgeCooldown);
-    // timeoutCallback(level, dodgeCooldown);
-    setTimeout(()=>{animate_base(level)},dodgeCooldown);
-    console.log(`Dodge Cooldown: ${dodgeCooldown/1000}s`);
 }
 
 let keyPressed = 0;
 
-// function keyboard_callback(e) {
-//     console.log("e: ", e);
-//     keyPressed = e.keyCode;
-//     animateAction(e.keyCode,"player1");
-// }
-
-function animateAction(keyCode, player) {
-    if (keyCode == 32) {      //space
-        //play slap animation
-        //can only slap when Ready?
-        //can dodge immediately after slap?
-        if (state == "Ready") {
-            console.log("Slap!");
-            animate_slap(player, 0);
-        } else {
-            console.log("Not Ready!");
-        }
-    }
-    if (keyCode == 16) {      //shift
-        console.log("Ready?");
-        //play Ready animation
-        //cannot dodge when Ready
-        animate_ready(0);
-    }
-    if (keyCode == 17) {      //ctrl
-        //if in Ready, return to UnReady? (base state?)
-        //if in UnReady?(base state), play dodge animation
-        if (state == "Ready") {
-            console.log("UnReady?");
-            animate_base(0);
-        } else {
-            console.log("Dodge?");
-            animate_dodge(0);
-        }
-    }
-}
-
-
 
 /*          tvJosh          */
-const TRY_SLAP_STATE = 0;
-const SLAPPING_STATE = 1;
-const DODGE_STATE    = 2;
-const IDLE_STATE     = 3;
-
-let p1State = IDLE_STATE;
-let p2State = IDLE_STATE;
-
-let p1TimeEnteredState = 0
-let p2TimeEnteredState = 0
+let p1TimeEnteredState = 0;
+let p2TimeEnteredState = 0;
 
 let lastStateUpdate = 0;
 
@@ -233,8 +165,7 @@ const minMoveTime = 500;
 const SLAP_COOLDOWN = 500;
 const BLOCK_COOLDOWN = 250;
 
-let p1SlappedCount = 0;
-let p2SlappedCount = 0;
+
 
 const p1SlapKeyCode     = ' ';
 const p1DodgeKeyCode    = 'Control';
@@ -244,31 +175,25 @@ const p1GetReadyKeyCode = 'Shift';
 function keyboard_callback(e) {
     // console.log("e: ", e);
 
-    if (e.key === p1SlapKeyCode) {
-        p1State = TRY_SLAP_STATE;
-        // TrySlap("p1");
+    if (e.key === p1SlapKeyCode) {           //space
+        p1.State = TRY_SLAP_STATE;
     }
-    else if (e.key === p1GetReadyKeyCode) {      //shift
-        p1State = IDLE_STATE;
+    else if (e.key === p1GetReadyKeyCode) {  //shift
+        p1.State = IDLE_STATE;
         // console.log("Ready?");
         //play Ready animation
         //cannot dodge when Ready
-        // animate_ready(0);
     }
-    else if (e.key === p1DodgeKeyCode) {      //ctrl
-        p1State = DODGE_STATE;
+    else if (e.key === p1DodgeKeyCode) {     //ctrl
+        p1.State = DODGE_STATE;
         //if in Ready, return to UnReady? (base state?)
         //if in UnReady?(base state), play dodge animation
-        // if (state == "Ready") {
-        //     animate_dodge("p1",0);
-        // }
     }
-    updateState();
 }
 
 
 
-
+//random slapping AI
 function TrySlap(player) {
     if (player == "p1") {
         const dt = performance.now() - p1TimeEnteredState;
@@ -286,136 +211,115 @@ function TrySlap(player) {
         if (p2State == IDLE_STATE && dt > SLAP_COOLDOWN) {
             p2State = TRY_SLAP_STATE;
             p2TimeEnteredState = performance.now();
-    
+
             console.log('Player2 attempting slap.');
         }
     }
 }
 
 function Dodge(player) {
-    if (player == "p1") {
-        // p2Div.innerHTML = 'Player2 dodged.';
-        console.log("Player1 dodged.");
-        animate_dodge("p1",0);
-    } else {     //p2
-        // p1Div.innerHTML = 'Player1 dodged.';
-        console.log("Player2 dodged.");
-        animate_dodge("p2",0);
-    }
-    Reset("p1");
-    Reset("p2");
+    animateDodge(player);
 }
 
 function GotSlapped(player) {
-    console.log("player: ", player);
-    Reset("p1");
-    Reset("p2");
-    if (player == "p1") {
-        p1SlappedCount += 1;
-        p2ScoreDiv.innerHTML = p1SlappedCount;
-        console.log("Player1 Got Slapped.");
-        animate_slap("p1",0);
-    } else {    //p2
-        p2SlappedCount += 1;
-        p1ScoreDiv.innerHTML = p2SlappedCount;
-        console.log("Player2 Got Slapped.");
-        animate_slap("p2",0);
-    }
+    // console.log("player: ", player);
+
+    player.SlapCount++;
+    player.ScoreDiv.innerHTML = `Player ${player.player} Score: ${player.SlapCount}`;
 }
 
-function Reset(player) {
-    if (player == "p1") {
-        p1State = IDLE_STATE;
-        p1TimeEnteredState = performance.now();
-    } else {     //p2
-        p2State = IDLE_STATE;
-        p2TimeEnteredState = performance.now();
-    }
-    animate_base(0);    //TODO: reset both? or just 1?
-}
-
-function updateState() {
-    if (performance.now() - lastStateUpdate < minMoveTime) return;
-
-    lastStateUpdate = performance.now();
-
+function updateState(time) {
     // console.log('Inside updateState, p1State: ', p1State, ', p2State: ', p2State);
 
-    if (p1State === TRY_SLAP_STATE && p2State === TRY_SLAP_STATE) {
+    p1.sprite = characters[levelSelect.value].sprite;
+    p1.spriteW = characters[levelSelect.value].sprite_w;
+    p1.x      = characters[levelSelect.value].p1_X;
+    p1.w      = characters[levelSelect.value].p1_W;
+    p1.slapX  = characters[levelSelect.value].p1_SlapX;
+    p1.dodgeX = characters[levelSelect.value].p1_DodgeX;
+    p1.dodgeV = characters[levelSelect.value].p1_DodgeVec;
+
+    p2.sprite = characters[levelSelect.value].sprite;
+    p2.spriteW = characters[levelSelect.value].sprite_w;
+    p2.x      = characters[levelSelect.value].p2_X;
+    p2.w      = characters[levelSelect.value].p2_W;
+    p2.slapX  = characters[levelSelect.value].p2_SlapX;
+    p2.dodgeX = characters[levelSelect.value].p2_DodgeX;
+    p2.dodgeV = characters[levelSelect.value].p2_DodgeVec;
+
+    if (p1.State === IDLE_STATE) {
+        animateReady(p1);
+    }
+    if (p2.State === IDLE_STATE) {
+        animateReady(p2);
+    }
+
+    if (p1.State === TRY_SLAP_STATE && p2.State === TRY_SLAP_STATE) {
         if (p2TimeEnteredState < p1TimeEnteredState) {
-            GotSlapped("p1");
+            GotSlapped(p2);
         } else {
-            GotSlapped("p2");
+            GotSlapped(p1);
         }
     }
-    else if (p1State === TRY_SLAP_STATE) {
-        if (p2State === SLAPPING_STATE) {
-            // playerDiv.innerHTML = 'Player1 already being slapped by Player2.';
-            console.log('Player1 already being slapped by Player2.');
-        }
-        else if (p2State === DODGE_STATE) {
-            Dodge("p1");
-        }
-        else if (p2State === IDLE_STATE) {
-            GotSlapped("p2");
-        }
-    }
-    else if (p2State === TRY_SLAP_STATE) {
-        if (p1State === SLAPPING_STATE) {
-            // p2Div.innerHTML = 'Player2 already being slapped by Player1.';
+    else if (p1.State === TRY_SLAP_STATE) {
+        console.log("state: ", p1.State);
+        if (p2.State === SLAPPING_STATE) {
             console.log('Player2 already being slapped by Player1.');
         }
-        else if (p1State === DODGE_STATE) {
-            Dodge("p1");
+        else if (p2.State === DODGE_STATE) {
+            Dodge(p2);
         }
-        else if (p1State === IDLE_STATE) {
-            GotSlapped("p1");
+        else if (p2.State === IDLE_STATE) {
+            p1.State = SLAPPING_STATE;
+            GotSlapped(p1);
         }
     }
-    else if (p1State === SLAPPING_STATE) {
-        animate_slap("p1",0);
+    else if (p2.State === TRY_SLAP_STATE) {
+        if (p1.State === SLAPPING_STATE) {
+            console.log('Player1 already being slapped by Player2.');
+        }
+        else if (p1.State === DODGE_STATE) {
+            Dodge(p1);
+        }
+        else if (p1.State === IDLE_STATE) {
+            p2.State = SLAPPING_STATE;
+            GotSlapped(p2);
+        }
     }
-    else if (p2State === SLAPPING_STATE) {
-        animate_slap("p2",0);
+    else if (p1.State === SLAPPING_STATE) {
+        console.log("p1 slapping state");
+        animate_slap(p1,time);
+    }
+    else if (p2.State === SLAPPING_STATE) {
+        console.log("p2 slapping state");
+        animate_slap(p2,time);
     }
 }
 
 
+const fps_div = document.getElementById("fps");
 let tickTimeoutId;
-// let p2State = 0;
-// const willSheet = new Image(WillSmith_sprite);
-// const willSheet = document.createElement('img');
-// // willSheet.src = WillSmith_sprite;
-// willSheet.src = WillSmith.sprite;
-// const willSheetHeight = 457;
-// const willSheetWidth = 6150;
-// const willSheetXPositions = [
-//     0, willSheetWidth / 15, 1 * willSheetWidth / 15, 2 * willSheetWidth / 15, 3 * willSheetWidth / 15, 4 * willSheetWidth / 15, 
-//     5 * willSheetWidth / 15, 6 * willSheetWidth / 15, 7 * willSheetWidth / 15, 8 * willSheetWidth / 15, 9 * willSheetWidth / 15, 
-//     10 * willSheetWidth / 15, 11 * willSheetWidth / 15, 12 * willSheetWidth / 15, 13 * willSheetWidth / 15, 14 * willSheetWidth / 15
-// ]
-// const willSheetDownsizeRatio = 1;
-
-// document.getElementById('after_canvas').appendChild(willSheet);
-
-function tick() {
+let lastFrame = 0;
+function render_loop(time) {
     // if (Math.random() < 0.2) {
     //     console.log('calling p2TrySlap');
     //     TrySlap("p2");
     // }
     // console.log('calling updateState');
-    updateState();
 
-    // p2State += 1;
-    // const p2SpriteNum = 13 + p2State % 2;
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // ctx.drawImage(willSheet, 
-    //     willSheetXPositions[p2SpriteNum], 0, willSheetWidth / 15, willSheetHeight, 
-    //     0, 0, willSheetWidth / 15 * willSheetDownsizeRatio, willSheetHeight * willSheetDownsizeRatio
-    // );
-    // console.log('tick', p2State);
-    tickTimeoutId = setTimeout(tick, tickFreq);
+
+    let diff = time - lastFrame;
+    // console.log("diff: ", diff);
+
+    let fps = 1/(diff/1000);
+    fps_div.innerText = `FPS: ${fps}`;
+    lastFrame = time;
+
+    updateState(time);
+
+    requestAnimationFrame(render_loop);
+
+
 }
 
-const tickFreq = 500;
-tickTimeoutId = setTimeout(tick, tickFreq);
+render_loop();

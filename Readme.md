@@ -20,4 +20,8 @@
     1. Slap button/key (space?)
     2. Dodge button/key
     3. Feint button/key
-    
+4. States
+    1. Base/Idle?
+    2. Ready?
+    3. Slap
+    4. Dodge
